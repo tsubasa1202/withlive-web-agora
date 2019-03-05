@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-549SS3N');</script>
+  <!-- End Google Tag Manager -->
+<meta charset="utf-8" />
+<title>WithLIVE</title>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+
+<style type="text/css">
+
+body, html {
+    background-color: gray;
+    height: 100%;
+}
+#video {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+div[id^="agora_remote"]{
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+}
+
+#agora_local {
+    position: absolute;
+    width: 360px;
+    height: 240px;
+    bottom: 10px;
+    left: 10px;
+    z-index: 100;
+    border: 3px solid white;
+    border-radius: 3px;
+}
+
+#loader-bg {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    background-color: rgba(255,255,255,0.5);
+    z-index: 1;
+}
+#loader {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    margin-top: -100px;
+    margin-left: -100px;
+    text-align: center;
+    z-index: 2;
+}
+
+#div_device{
+  display: none;
+}
+
+</style>
+<link rel="icon" type="image/png" sizes="96x96" href="../assets/img/favicon.png">
+<!-- moment cdn -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/locale/ja.js"></script>
+<!-- other cdn -->
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<!-- <script src="https://cdn.agora.io/sdk/web/AgoraRTCSDK-2.5.1.js"></script> -->
+<script src="AgoraRTCSDK-2.5.2.js"></script>
+<script src="../assets/js/util.js"></script>
+<script src="count.js"></script>
+<script src="../config.js"></script>
+
+
+  <!-- Facebook Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '335854796972481');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=335854796972481&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Facebook Pixel Code -->
+</head>
+
+<body>
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-549SS3N"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<!--ロード画面の記述-->
+  <div id="loader-bg">
+    <div id="loader">
+      <img src="../assets/img/img-loading.gif" width="80" height="80" alt="Now Loading..." />
+    </div>
+</div>
+<!--ロード画面の記述ここまで-->
+
+<div id="div_device" class="panel panel-default">
+<div class="select">
+<label for="audioSource">Audio source: </label><select id="audioSource"></select>
+</div>
+<div class="select">
+<label for="videoSource">Video source: </label><select id="videoSource"></select>
+</div>
+</div>
+
+
+<h1 id="timer" style="font-size: 48px; position: absolute; top: 30px; right: 50px; color: #FFF; z-index: 30;"></h1>
+<div id="video">
+    <div id="message_fail_or_success"></div>
+    <div id="agora_local"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/5.8.2/firebase.js"></script>
+<script src="../firebase.js"></script>
+<script type="text/javascript" src="../loader.js"></script>
+<script language="javascript">
+
+/* select Log type */
+// AgoraRTC.Logger.setLogLevel(AgoraRTC.Logger.NONE);
+AgoraRTC.Logger.setLogLevel(AgoraRTC.Logger.ERROR);
+// AgoraRTC.Logger.setLogLevel(AgoraRTC.Logger.WARNING);
+// AgoraRTC.Logger.setLogLevel(AgoraRTC.Logger.INFO);  
+// AgoraRTC.Logger.setLogLevel(AgoraRTC.Logger.DEBUG);
+
+/* simulated data to proof setLogLevel() */
+AgoraRTC.Logger.error('this is error');
+AgoraRTC.Logger.warning('this is warning');
+AgoraRTC.Logger.info('this is info');
+AgoraRTC.Logger.debug('this is debug');
+
+if(!AgoraRTC.checkSystemRequirements()) {
+  alert('お使いのブラウザではビデオ通話をご利用いただけません。AndroidのChrome、またはパソコンのChromeからご利用ください。')
+}
+
+var client, localStream, camera, microphone;
+
+var audioSelect = document.querySelector('select#audioSource');
+var videoSelect = document.querySelector('select#videoSource');
+
+join()
+
+function join() {
+  startLoading()
+  var channel_key = null;
+  let appId = "<appid>"
+
+  const channelName = getParameterByName('channel')
+  const channelProfile = getParameterByName('profile') // mode: "live" | "rtc"
+  // client = AgoraRTC.createClient({mode: 'interop'});
+  client = AgoraRTC.createClient({ mode: channelProfile, codec: "h264" })
+  client.init(appId, function () {
+    console.log("AgoraRTC client initialized");
+
+    client.setClientRole('host', function() {
+    console.log("setHost success");
+
+    client.join(channel_key, channelName, null, function(uid) {
+      console.log("User " + uid + " join channel successfully");
+
+        camera = videoSource.value;
+        microphone = audioSource.value;
+        localStream = AgoraRTC.createStream({streamID: uid, audio: true, cameraId: camera, microphoneId: microphone, video: true, screen: false});
+        //localStream = AgoraRTC.createStream({streamID: uid, audio: false, cameraId: camera, microphoneId: microphone, video: false, screen: true, extensionId: 'minllpmhdgpndnkomcoccfekfegnlikg'});
+        localStream.setVideoProfile('360P'); // ref. https://docs.agora.io/en/1.8/user_guide/API/webagent_api_live.html
+
+        // The user has granted access to the camera and mic.
+        localStream.on("accessAllowed", function() {
+          console.log("accessAllowed");
+        });
+
+        // The user has denied access to the camera and mic.
+        localStream.on("accessDenied", function() {
+          commonErrorhandle("accessDenied", null)
+          console.log("accessDenied");
+        });
+
+        localStream.init(function() {
+          localStream.play('agora_local');
+
+          client.publish(localStream, function (err) {
+            commonErrorhandle("Publish local stream error",  err);
+            console.log("Publish local stream error: " + err);
+          });
+
+          client.on('stream-published', function (evt) {
+            stopLoadingSuccess()
+            console.log("Publish local stream successfully");
+          });
+        }, function (err) {
+          commonErrorhandle("getUserMedia failed", err)
+          console.log("getUserMedia failed", err);
+        });
+    }, function(err) {
+      commonErrorhandle("Join channel failed", err)
+      console.log("Join channel failed", err);
+    });
+
+    }, function(e) {
+      commonErrorhandle("setHost failed", e);
+      console.log("setHost failed", e);
+  })
+
+  }, function (err) {
+    commonErrorhandle("AgoraRTC client init failed", err)
+    console.log("AgoraRTC client init failed", err);
+  });
+
+  channelKey = "";
+  client.on('error', function(err) {
+    commonErrorhandle("Got error msg", err)
+    console.log("Got error msg:", err.reason);
+    if (err.reason === 'DYNAMIC_KEY_TIMEOUT') {
+      client.renewChannelKey(channelKey, function(){
+        console.log("Renew channel key successfully");
+      }, function(err){
+        commonErrorhandle("Renew channel key failed", err)
+        console.log("Renew channel key failed", err);
+      });
+    }
+  });
+
+
+  client.on('stream-added', function (evt) {
+    var stream = evt.stream;
+    console.log("New stream added: " + stream.getId());
+    console.log("Subscribe ", stream);
+    client.subscribe(stream, function (err) {
+      commonErrorhandle("Subscribe stream failed", err)
+      console.log("Subscribe stream failed", err);
+    });
+  });
+
+  client.on('stream-subscribed', function (evt) {
+    var stream = evt.stream;
+    console.log("Subscribe remote stream successfully: " + stream.getId());
+    if ($('div#video #agora_remote'+stream.getId()).length === 0) {
+      $('div#video').append('<div id="agora_remote'+stream.getId()+'" style="float:left; display:inline-block;"></div>');
+    }
+    stream.play('agora_remote' + stream.getId());
+  });
+
+  client.on('stream-removed', function (evt) {
+    var stream = evt.stream;
+    stream.stop();
+    $('#agora_remote' + stream.getId()).remove();
+    console.log("Remote stream is removed " + stream.getId());
+  });
+
+  client.on('peer-leave', function (evt) {
+    var stream = evt.stream;
+    if (stream) {
+      stream.stop();
+      $('#agora_remote' + stream.getId()).remove();
+      console.log(evt.uid + " leaved from this channel");
+    }
+  });
+
+  client.on('network-quality', async function (stats) {
+    // console.log('downlinkNetworkQuality', stats.downlinkNetworkQuality);
+    // console.log('uplinkNetworkQuality', stats.uplinkNetworkQuality);
+    if (stats.downlinkNetworkQuality >= 2 || stats.uplinkNetworkQuality >= 2) {
+      const [transportStats, sessionStatus, remoteAudioStatus, remoteVideoStatus, localAudioStatus, localVideoStatus] = await Promise.all([
+        getTransportStats(),
+        getSessionStats(),
+        getRemoteAudioStats(),
+        getRemoteVideoStats(),
+        getLocalAudioStats(),
+        getLocalVideoStats()
+      ])
+
+      const statusObject = {
+        networkQuality: stats,
+        transportStats: transportStats,
+        sessionStatus: sessionStatus,
+        remoteAudioStatus: remoteAudioStatus,
+        remoteVideoStatus: remoteVideoStatus,
+        localAudioStatus: localAudioStatus,
+        localVideoStatus: localVideoStatus,
+      }
+      commonErrorhandleNoAlert(statusObject, 'badNetworkInVideo')
+    } 
+  })
+}
+  function getTransportStats() {
+    return new Promise(function (resolve, reject) {
+      client.getTransportStats((resultMap) => {
+        resolve(resultMap)
+      })
+    })
+  }
+
+  function getSessionStats() {
+      return new Promise(function (resolve, reject) {
+        client.getSessionStats((stats) => {
+          resolve(stats)
+        })
+      })
+  }
+
+  function getRemoteAudioStats(){ 
+    return new Promise(function (resolve, reject) {
+    client.getRemoteAudioStats((resultMap) => {
+      resolve(resultMap)
+      })
+    })
+  }
+
+  function getRemoteVideoStats(){ 
+    return new Promise(function (resolve, reject) {
+    client.getRemoteVideoStats((resultMap) => {
+      resolve(resultMap)
+      })
+    })
+  }
+
+  function getLocalAudioStats() {
+      return new Promise(function (resolve, reject) {
+        client.getLocalAudioStats((resultMap) => {
+          resolve(resultMap)
+        })
+      })
+    }
+
+  function getLocalVideoStats() {
+      return new Promise(function (resolve, reject) {
+        client.getLocalVideoStats((resultMap) => {
+          resolve(resultMap)
+        })
+      })
+  }
+
+function leave() {
+  client.leave(function () {
+    console.log("Leavel channel successfully");
+  }, function (err) {
+    commonErrorhandle("Leave channel failed", err)
+    console.log("Leave channel failed");
+  });
+}
+
+function publish() {
+  client.publish(localStream, function (err) {
+    commonErrorhandle("Publish local stream error", err)
+    console.log("Publish local stream error: " + err);
+  });
+}
+
+function unpublish() {
+  client.unpublish(localStream, function (err) {
+    commonErrorhandle("Unpublish local stream failed", err)
+    console.log("Unpublish local stream failed" + err);
+  });
+}
+
+function getDevices() {
+  AgoraRTC.getDevices(function (devices) {
+    for (var i = 0; i !== devices.length; ++i) {
+      var device = devices[i];
+      var option = document.createElement('option');
+      option.value = device.deviceId;
+      if (device.kind === 'audioinput') {
+        option.text = device.label || 'microphone ' + (audioSelect.length + 1);
+        audioSelect.appendChild(option);
+      } else if (device.kind === 'videoinput') {
+        option.text = device.label || 'camera ' + (videoSelect.length + 1);
+        videoSelect.appendChild(option);
+      } else {
+        console.log('Some other kind of source/device: ', device);
+      }
+    }
+  });
+}
+
+//audioSelect.onchange = getDevices;
+//videoSelect.onchange = getDevices;
+getDevices();
+
+/**
+ * エラーが起きた時に行う共通の処理
+ */
+ async function commonErrorhandle(message, error) {
+  stopLoadingFailed()
+  console.error(error)
+  console.log(message)
+  const channelName = getParameterByName('channel')
+  const UID = await getCurrentUserID()
+  let url = `${backendHost}/v1/livelog/chrome`
+  let params = new URLSearchParams()
+  params.append('sdk', 'agora')
+  params.append('uid', UID)
+  params.append('channel', channelName)
+  params.append('error', JSON.stringify(error))
+  params.append('message', message)
+  await axios.post(url, params, {
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded'
+    }
+  })
+  alert('エラーが発生しました。Chromeアプリを一度終了してから再度入室し直してください。')
+  location.href = "/schedule.html"
+}
+
+  async function commonErrorhandleNoAlert(message, error) {
+    console.error(error)
+    console.log(message)
+    const channelName = getParameterByName('channel')
+    const UID = await getCurrentUserID()
+    let url = `${backendHost}/v1/livelog/chrome`
+    let params = new URLSearchParams()
+    params.append('sdk', 'agora')
+    params.append('uid', UID)
+    params.append('channel', channelName)
+    params.append('error', JSON.stringify(error))
+    params.append('message', JSON.stringify(message))
+    await axios.post(url, params, {
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded'
+      }
+    })
+  }
+</script>
+</body>
+</html>
